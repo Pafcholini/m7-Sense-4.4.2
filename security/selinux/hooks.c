@@ -4416,16 +4416,30 @@ static unsigned int selinux_ip_postroute(struct sk_buff *skb, int ifindex,
 
 	if (!selinux_policycap_netpeer)
 		return selinux_ip_postroute_compat(skb, ifindex, family);
-#ifdef CONFIG_XFRM
-	if (skb_dst(skb) != NULL && skb_dst(skb)->xfrm != NULL)
-		return NF_ACCEPT;
-#endif
+
 	secmark_active = selinux_secmark_enabled();
 	peerlbl_active = netlbl_enabled() || selinux_xfrm_enabled();
 	if (!secmark_active && !peerlbl_active)
 		return NF_ACCEPT;
 
 	sk = skb->sk;
+#ifdef CONFIG_XFRM
+	/* If skb->dst->xfrm is non-NULL then the packet is undergoing an IPsec
+ 	 * packet transformation so allow the packet to pass without any checks
+ 	 * since we'll have another chance to perform access control checks
+ 	 * when the packet is on it's final way out.
+ 	 * NOTE: there appear to be some IPv6 multicast cases where skb->dst
+	 *       is NULL, in this case go ahead and apply access control.
+	 *       is NULL, in this case go ahead and apply access control.
+	 * NOTE: if this is a local socket (skb->sk != NULL) that is in the
+	 *       TCP listening state we cannot wait until the XFRM processing
+	 *       is done as we will miss out on the SA label if we do;
+	 *       unfortunately, this means more work, but it is only once per
+	 *       connection. */
+	if (skb_dst(skb) != NULL && skb_dst(skb)->xfrm != NULL &&
+	    !(sk != NULL && sk->sk_state == TCP_LISTEN))
+ 		return NF_ACCEPT;
+#endif
 	if (sk == NULL) {
 		if (skb->skb_iif) {
 			secmark_perm = PACKET__FORWARD_OUT;
@@ -5076,11 +5090,11 @@ static int selinux_setprocattr(struct task_struct *p,
 			goto abort_change;
 
 		ptsid = 0;
-		task_lock(p);
+		rcu_read_lock();
 		tracer = ptrace_parent(p);
 		if (tracer)
 			ptsid = task_sid(tracer);
-		task_unlock(p);
+		rcu_read_unlock();
 
 		if (tracer) {
 			error = avc_has_perm(ptsid, sid, SECCLASS_PROCESS,
