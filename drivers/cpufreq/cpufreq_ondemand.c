@@ -393,6 +393,7 @@ static void update_sampling_rate(unsigned int new_rate)
 	dbs_tuners_ins.sampling_rate = new_rate
 				     = max(new_rate, min_sampling_rate);
 
+	get_online_cpus();
 	for_each_online_cpu(cpu) {
 		struct cpufreq_policy *policy;
 		struct cpu_dbs_info_s *dbs_info;
@@ -430,6 +431,7 @@ static void update_sampling_rate(unsigned int new_rate)
 		}
 		mutex_unlock(&dbs_info->timer_mutex);
 	}
+	put_online_cpus();
 }
 
 show_one(ui_timeout, ui_timeout);
