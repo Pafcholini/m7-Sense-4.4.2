@@ -26,6 +26,10 @@
 #include <linux/workqueue.h>
 #include <linux/kthread.h>
 #include <linux/slab.h>
+	
+#ifdef CONFIG_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#endif
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/cpufreq_interactive.h>
@@ -52,6 +56,12 @@
 #define MIN_SAMPLING_RATE_RATIO			(2)
 
 static unsigned int min_sampling_rate;
+
+#ifdef CONFIG_EARLYSUSPEND
+bool screen_is_on = true;
+static unsigned long stored_sampling_rate;
+#endif
+
 static unsigned int skip_ondemand = 0;
 
 #define LATENCY_MULTIPLIER			(1000)
@@ -1712,6 +1722,30 @@ bail_acq_sema_failed:
 	return 0;
 }
 
+#ifdef CONFIG_EARLYSUSPEND
+static void cpufreq_ondemand_early_suspend(struct early_suspend *h)
+{
+        mutex_lock(&dbs_mutex);
+        screen_is_on = false;
+        stored_sampling_rate = min_sampling_rate;
+        min_sampling_rate = MICRO_FREQUENCY_MIN_SAMPLE_RATE * 6;
+        mutex_unlock(&dbs_mutex);
+}
+static void cpufreq_ondemand_late_resume(struct early_suspend *h)
+{
+        mutex_lock(&dbs_mutex);
+        min_sampling_rate = stored_sampling_rate;
+        screen_is_on = true;
+        mutex_unlock(&dbs_mutex);
+}
+	
+static struct early_suspend cpufreq_ondemand_early_suspend_info = {
+        .suspend = cpufreq_ondemand_early_suspend,
+        .resume = cpufreq_ondemand_late_resume,
+        .level = EARLY_SUSPEND_LEVEL_DISABLE_FB,
+};	
+#endif
+
 static int __init cpufreq_gov_dbs_init(void)
 {
 	u64 idle_time;
@@ -1751,6 +1785,9 @@ static int __init cpufreq_gov_dbs_init(void)
 			per_cpu(up_task, i) = pthread;
 		}
 	}
+#ifdef CONFIG_EARLYSUSPEND
+	register_early_suspend(&cpufreq_ondemand_early_suspend_info);
+#endif
 	return cpufreq_register_governor(&cpufreq_gov_ondemand);
 }
 
@@ -1759,6 +1796,9 @@ static void __exit cpufreq_gov_dbs_exit(void)
 	unsigned int i;
 
 	cpufreq_unregister_governor(&cpufreq_gov_ondemand);
+#ifdef CONFIG_EARLYSUSPEND
+	unregister_early_suspend(&cpufreq_ondemand_early_suspend_info);
+#endif
 	for_each_possible_cpu(i) {
 		struct cpu_dbs_info_s *this_dbs_info =
 			&per_cpu(od_cpu_dbs_info, i);
@@ -1783,3 +1823,4 @@ fs_initcall(cpufreq_gov_dbs_init);
 module_init(cpufreq_gov_dbs_init);
 #endif
 module_exit(cpufreq_gov_dbs_exit);
+
