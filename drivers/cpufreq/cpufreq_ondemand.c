@@ -141,6 +141,10 @@ static inline void switch_normal_mode(void);
 
 static DEFINE_MUTEX(dbs_mutex);
 
+#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND
+static struct cpufreq_governor cpufreq_gov_ondemand;
+#endif
+
 static struct dbs_tuners {
 	unsigned int sampling_rate;
 	unsigned int up_threshold;
@@ -397,6 +401,10 @@ static void update_sampling_rate(unsigned int new_rate)
 		policy = cpufreq_cpu_get(cpu);
 		if (!policy)
 			continue;
+                if (policy->governor != &cpufreq_gov_ondemand) {
+                        cpufreq_cpu_put(policy);
+                        continue;
+                }
 		dbs_info = &per_cpu(od_cpu_dbs_info, policy->cpu);
 		cpufreq_cpu_put(policy);
 
