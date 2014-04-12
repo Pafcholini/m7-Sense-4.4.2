@@ -35,13 +35,13 @@
 #include <trace/events/cpufreq_interactive.h>
 
 
-#define DEF_SAMPLING_RATE				(50000)
+#define DEF_SAMPLING_RATE			(15000)
 #define DEF_FREQUENCY_DOWN_DIFFERENTIAL		(10)
-#define DEF_FREQUENCY_UP_THRESHOLD		(80)
+#define DEF_FREQUENCY_UP_THRESHOLD		(90)
 #define DEF_SAMPLING_DOWN_FACTOR		(1)
 #define MAX_SAMPLING_DOWN_FACTOR		(100000)
 #define MICRO_FREQUENCY_DOWN_DIFFERENTIAL	(3)
-#define MICRO_FREQUENCY_UP_THRESHOLD		(95)
+#define MICRO_FREQUENCY_UP_THRESHOLD		(90)
 #define MICRO_FREQUENCY_MIN_SAMPLE_RATE		(10000)
 #define MIN_FREQUENCY_UP_THRESHOLD		(11)
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
@@ -1598,11 +1598,9 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			if (latency == 0)
 				latency = 1;
 			
-			min_sampling_rate = max(min_sampling_rate,
-					MIN_LATENCY_MULTIPLIER * latency);
-			dbs_tuners_ins.sampling_rate =
-				max(min_sampling_rate,
-				    latency * LATENCY_MULTIPLIER);
+			min_sampling_rate = MICRO_FREQUENCY_MIN_SAMPLE_RATE;
+			dbs_tuners_ins.sampling_rate = DEF_SAMPLING_RATE;
+
 			if (dbs_tuners_ins.sampling_rate < DEF_SAMPLING_RATE)
 				dbs_tuners_ins.sampling_rate = DEF_SAMPLING_RATE;
 			dbs_tuners_ins.origin_sampling_rate = dbs_tuners_ins.sampling_rate;
