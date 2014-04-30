@@ -464,10 +464,7 @@ static void tz_wake(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 /* KGSL Simple GPU Governor */
 /* Copyright (c) 2011-2013, Paul Reioux (Faux123). All rights reserved. */
 static int lazyness = 5;
-<<<<<<< HEAD
 static int ramp_up_threshold = 6000;
-=======
->>>>>>> 9b0ad36... KGSL: Add a simple GPU governor for Adreno xxx GPU series
 
 static int simple_governor(struct kgsl_device *device, int idle_stat)
 {
@@ -475,11 +472,7 @@ static int simple_governor(struct kgsl_device *device, int idle_stat)
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 
 	/* it's currently busy */
-<<<<<<< HEAD
 	if (idle_stat < ramp_up_threshold) {
-=======
-	if (idle_stat < 6000) {
->>>>>>> 9b0ad36... KGSL: Add a simple GPU governor for Adreno xxx GPU series
 		if (pwr->active_pwrlevel == 0)
 			val = 0; /* already maxed, so do nothing */
 		else if ((pwr->active_pwrlevel > 0) &&
@@ -544,14 +537,10 @@ static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 		total_time = stats.total_time & 0x0FFFFFFF;
 		total_time |= (pwr->active_pwrlevel) << 28;
 #ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
-<<<<<<< HEAD
 		if (priv->governor == TZ_GOVERNOR_SIMPLE)
 			val = simple_governor(device, idle);
 		else
 			val = __secure_tz_entry(TZ_UPDATE_ID, idle, total_time);
-=======
-		val = simple_governor(device, idle);
->>>>>>> 9b0ad36... KGSL: Add a simple GPU governor for Adreno xxx GPU series
 #else
 		val = __secure_tz_entry(TZ_UPDATE_ID, idle, total_time);
 #endif
